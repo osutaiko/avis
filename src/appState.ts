@@ -148,13 +148,13 @@ export class AppState implements MutationManager {
         if (this._historyIndex === null || this._historyIndex == 0) return;
         this._historyIndex--;
         const content = this._history[this._historyIndex];
-        this.init(content);
+        this.init(content, true);
     }
     redo() {
         if (this._historyIndex === null || this._historyIndex == this._history.length - 1) return;
         this._historyIndex++;
         const content = this._history[this._historyIndex];
-        this.init(content);
+        this.init(content, true);
     }
     // 앱 상태에 변경이 있을 때마다 깔아놓은 가정들이 온전한지 체크
     checkState() {
@@ -242,7 +242,7 @@ export class AppState implements MutationManager {
     divideAndCarryCode(rowIndex: number, colIndex: number, height: number) {
         this.mutateWithHistory(() => { this._codeSpace.divideAndCarryLines(rowIndex, colIndex, height); });
     }
-    init(content?: string) {
+    init(content?: string, preserveHistory: boolean = false) {
         this.mutate(() => {
             this.stop();
             if (content != null) {
@@ -302,9 +302,11 @@ export class AppState implements MutationManager {
                 const { output } = this.runningOptions;
                 this.runningOptions = { output: output! + value };
             };
-            this._history = [];
-            this._historyIndex = null;
-            this.pushHistory();
+            if (!preserveHistory) {
+                this._history = [];
+                this._historyIndex = null;
+                this.pushHistory();
+            }
             this._path.clear();
             this._path.step(Moment.fromMachineState(
                 this._machine,
