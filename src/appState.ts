@@ -141,8 +141,8 @@ export class AppState implements MutationManager {
         }
     }
     mutateWithHistory(executor: Executor) {
-        this.pushHistory();
         this.mutate(executor);
+        this.pushHistory();
     }
     undo() {
         if (this._historyIndex === null || this._historyIndex == 0) return;
