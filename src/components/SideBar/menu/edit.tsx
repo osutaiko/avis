@@ -63,6 +63,21 @@ export const Content = connect(
                 />
             </Label>
         </SideBarContentFolder>
+        <SideBarContentFolder
+            title="실행 취소 / 다시 실행"
+            open={appState.getUIOpen('edit.undoRedo')}
+            onBarClick={open => appState.setUIOpen('edit.undoRedo', !open)}>
+            <MenuButton
+                label="실행 취소"
+                disabled={appState.isRunning || !appState.canUndo}
+                onClick={() => { appState.undo(); }}
+            />
+            <MenuButton
+                label="다시 실행"
+                disabled={appState.isRunning || !appState.canRedo}
+                onClick={() => { appState.redo(); }}
+            />
+        </SideBarContentFolder>
         <RedrawModeFolder appState={appState}/>
         <SideBarContentFolder
             title="회전 / 반전"

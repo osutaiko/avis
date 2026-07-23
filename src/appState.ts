@@ -119,6 +119,12 @@ export class AppState implements MutationManager {
     get isRunning() {
         return this._runner !== null;
     }
+    get canUndo() {
+        return this._historyIndex !== null && this._historyIndex > 0;
+    }
+    get canRedo() {
+        return this._historyIndex !== null && this._historyIndex < this._history.length - 1;
+    }
     pushHistory() {
         const content = this._codeSpace.toString();
         if (this._historyIndex === null) {
@@ -397,6 +403,7 @@ class UIState {
             'file.save': true,
             'file.load': true,
             'edit.inputMethod': true,
+            'edit.undoRedo': true,
             'edit.rotateAndFlip': true,
             'edit.redraw': true,
             'state.cursor': true,
