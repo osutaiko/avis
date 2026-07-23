@@ -33,6 +33,8 @@ export class AppState implements MutationManager {
     private _path: Path;
     private _fuel: number;
     private _runner: (() => void) | null;
+    private _history: string[];
+    private _historyIndex: number | null;
     constructor({ content }: { content: string }) {
         this._changeDispatcher = new ChangeDispatcher();
         this._uiState = new UIState();
@@ -46,6 +48,8 @@ export class AppState implements MutationManager {
         this._path = new Path();
         this._fuel = 50; // 과거 추적 깊이
         this._runner = null; // rAF handler
+        this._history = [];
+        this._historyIndex = null;
         this.init(content);
     }
     get changeDispatcher() { return this._changeDispatcher; }
@@ -115,6 +119,37 @@ export class AppState implements MutationManager {
     get isRunning() {
         return this._runner !== null;
     }
+    pushHistory() {
+        const content = this._codeSpace.toString();
+        if (this._historyIndex === null) {
+            this._history.push(content);
+            this._historyIndex = 0;
+            return;
+        }
+        this._history = this._history.slice(0, this._historyIndex + 1);
+        this._history.push(content);
+        this._historyIndex = this._history.length - 1;
+        while (this._history.length > 100) {
+            this._history.shift();
+            this._historyIndex--;
+        }
+    }
+    mutateWithHistory(executor: Executor) {
+        this.pushHistory();
+        this.mutate(executor);
+    }
+    undo() {
+        if (this._historyIndex === null || this._historyIndex == 0) return;
+        this._historyIndex--;
+        const content = this._history[this._historyIndex];
+        this.init(content);
+    }
+    redo() {
+        if (this._historyIndex === null || this._historyIndex == this._history.length - 1) return;
+        this._historyIndex++;
+        const content = this._history[this._historyIndex];
+        this.init(content);
+    }
     // 앱 상태에 변경이 있을 때마다 깔아놓은 가정들이 온전한지 체크
     checkState() {
         console.assert(this._codeSpace.length > 0);
@@ -129,7 +164,7 @@ export class AppState implements MutationManager {
     setUIOpen(key: string, value: boolean) { this.mutate(() => { this._uiState.setOpen(key, value); }); }
     translateSelection(x: number, y: number) {
         if (x === 0 && y === 0) return;
-        this.mutate(() => {
+        this.mutateWithHistory(() => {
             (this.selection as Selection).translate(x, y);
         });
     }
@@ -164,42 +199,42 @@ export class AppState implements MutationManager {
         this.mutate(() => { this._machine.cursor.ySpeed = value; });
     }
     insertCode(rowIndex: number, colIndex: number, text: string, overwrite: boolean) {
-        this.mutate(() => { this._codeSpace.insert(rowIndex, colIndex, text, this._spaceFillChar, overwrite); });
+        this.mutateWithHistory(() => { this._codeSpace.insert(rowIndex, colIndex, text, this._spaceFillChar, overwrite); });
     }
     insertCodeVertical(rowIndex: number, colIndex: number, text: string) {
-        this.mutate(() => { this._codeSpace.insertVertical(rowIndex, colIndex, text, this._spaceFillChar); });
+        this.mutateWithHistory(() => { this._codeSpace.insertVertical(rowIndex, colIndex, text, this._spaceFillChar); });
     }
     insertChunkCode(rowIndex: number, colIndex: number, text: string, pushDown: boolean, overwrite: boolean) {
-        this.mutate(() => { this._codeSpace.insertChunk(rowIndex, colIndex, text, this.spaceChars, this._spaceFillChar, pushDown, overwrite); });
+        this.mutateWithHistory(() => { this._codeSpace.insertChunk(rowIndex, colIndex, text, this.spaceChars, this._spaceFillChar, pushDown, overwrite); });
     }
     insertChunkSmartCode(rowIndex: number, colIndex: number, text: string, overwrite: boolean) {
-        this.mutate(() => { this._codeSpace.insertChunkSmart(rowIndex, colIndex, text, this.spaceChars, this._spaceFillChar, overwrite); });
+        this.mutateWithHistory(() => { this._codeSpace.insertChunkSmart(rowIndex, colIndex, text, this.spaceChars, this._spaceFillChar, overwrite); });
     }
     peelCode(rowIndex: number, colIndex: number, width: number, height: number) {
-        this.mutate(() => { this._codeSpace.paint(rowIndex, colIndex, width, height, this._spaceFillChar); });
+        this.mutateWithHistory(() => { this._codeSpace.paint(rowIndex, colIndex, width, height, this._spaceFillChar); });
     }
     shrinkCode(rowIndex: number, colIndex: number, width: number, height: number) {
-        this.mutate(() => { this._codeSpace.shrink(rowIndex, colIndex, width, height); });
+        this.mutateWithHistory(() => { this._codeSpace.shrink(rowIndex, colIndex, width, height); });
     }
     invertHCode(rowIndex: number, colIndex: number, width: number, height: number) {
-        this.mutate(() => { this._codeSpace.invertH(rowIndex, colIndex, width, height, this._spaceFillChar); });
+        this.mutateWithHistory(() => { this._codeSpace.invertH(rowIndex, colIndex, width, height, this._spaceFillChar); });
     }
     invertVCode(rowIndex: number, colIndex: number, width: number, height: number) {
-        this.mutate(() => { this._codeSpace.invertV(rowIndex, colIndex, width, height, this._spaceFillChar); });
+        this.mutateWithHistory(() => { this._codeSpace.invertV(rowIndex, colIndex, width, height, this._spaceFillChar); });
     }
     rotateCWCode(rowIndex: number, colIndex: number, width: number, height: number) {
-        this.mutate(() => { this._codeSpace.rotateCW(rowIndex, colIndex, width, height, this._spaceFillChar); });
+        this.mutateWithHistory(() => { this._codeSpace.rotateCW(rowIndex, colIndex, width, height, this._spaceFillChar); });
     }
     rotateCCWCode(rowIndex: number, colIndex: number, width: number, height: number) {
-        this.mutate(() => { this._codeSpace.rotateCCW(rowIndex, colIndex, width, height, this._spaceFillChar); });
+        this.mutateWithHistory(() => { this._codeSpace.rotateCCW(rowIndex, colIndex, width, height, this._spaceFillChar); });
     }
     ensureCodeRowWidth(rowIndex: number, width: number) {
-        this.mutate(() => { this._codeSpace.ensureLineWidth(rowIndex, width, this._spaceFillChar); });
+        this.mutateWithHistory(() => { this._codeSpace.ensureLineWidth(rowIndex, width, this._spaceFillChar); });
     }
-    joinCodeRows(rowIndex: number, height: number) { this.mutate(() => { this._codeSpace.joinRows(rowIndex, height); }); }
-    deleteCodeRows(rowIndex: number, height: number) { this.mutate(() => { this._codeSpace.deleteRows(rowIndex, height); }); }
+    joinCodeRows(rowIndex: number, height: number) { this.mutateWithHistory(() => { this._codeSpace.joinRows(rowIndex, height); }); }
+    deleteCodeRows(rowIndex: number, height: number) { this.mutateWithHistory(() => { this._codeSpace.deleteRows(rowIndex, height); }); }
     divideAndCarryCode(rowIndex: number, colIndex: number, height: number) {
-        this.mutate(() => { this._codeSpace.divideAndCarryLines(rowIndex, colIndex, height); });
+        this.mutateWithHistory(() => { this._codeSpace.divideAndCarryLines(rowIndex, colIndex, height); });
     }
     init(content?: string) {
         this.mutate(() => {
@@ -261,6 +296,9 @@ export class AppState implements MutationManager {
                 const { output } = this.runningOptions;
                 this.runningOptions = { output: output! + value };
             };
+            this._history = [];
+            this._historyIndex = null;
+            this.pushHistory();
             this._path.clear();
             this._path.step(Moment.fromMachineState(
                 this._machine,
@@ -332,7 +370,7 @@ export class AppState implements MutationManager {
     finishSpecialMode() { this.mutate(() => this._specialMode = null); }
     startRedrawMode() { this.mutate(() => this._specialMode = new RedrawMode(() => this.onMutate())); }
     completeRedrawMode() {
-        this.mutate(() => {
+        this.mutateWithHistory(() => {
             const redrawMode = this._specialMode;
             if (!(redrawMode instanceof RedrawMode)) return;
             const { phase } = redrawMode;
